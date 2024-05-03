@@ -121,41 +121,8 @@ void drawLine(Image &img, int x0, int y0, int x1, int y1, uint32_t color) {
     }
 }
 
-Vector3 project(const Vector3 &v) {
-    // Simple perspective projection
-    float factor = 500 / (v.z + 1000); // Assuming the camera is -1000 units in z
-    return Vector3(v.x * factor + 400, v.y * factor + 300, v.z);
-}
-
-void drawCube(Image &img, const std::vector<Vector3> &vertices, const std::vector<int> &indices, uint32_t color) {
-    for (size_t i = 0; i < indices.size(); i += 2) {
-        Vector3 v0 = project(vertices[indices[i]]);
-        Vector3 v1 = project(vertices[indices[i + 1]]);
-        drawLine(img, std::round(v0.x), std::round(v0.y), std::round(v1.x), std::round(v1.y), color);
-    }
-}
-
 int main() {
     Image img(800, 600);
-
-    std::vector<Vector3> vertices = {
-        Vector3(-100, -100, -100),
-        Vector3(100, -100, -100),
-        Vector3(100, 100, -100),
-        Vector3(-100, 100, -100),
-        Vector3(-100, -100, 100),
-        Vector3(100, -100, 100),
-        Vector3(100, 100, 100),
-        Vector3(-100, 100, 100)
-    };
-
-    std::vector<int> indices = {
-        0, 1, 1, 2, 2, 3, 3, 0, // Bottom face
-        4, 5, 5, 6, 6, 7, 7, 4, // Top face
-        0, 4, 1, 5, 2, 6, 3, 7  // Vertical edges
-    };
-
-    //drawCube(img, vertices, indices, 0xFFFFFF);
 
     LDraw test;
     test.loadFromFile("model.ldr");
@@ -163,6 +130,19 @@ int main() {
     for (LDrawLine line : test.buildLines()) {
         drawLine(img, line.position1.x + 50, line.position1.y + 250, line.position2.x + 50, line.position2.y + 250, 0xFFFFFF);
         //std::cout << "(" << line.position1.x << ", " <<  line.position1.y << ") to (" << line.position2.x << ", " << line.position2.y << ")" << std::endl;
+    }
+
+    for (LDrawTri tri : test.buildTris()) {
+        drawLine(img, tri.position1.x + 50, tri.position1.y + 250, tri.position2.x + 50, tri.position2.y + 250, 0xFFFFFF);
+        drawLine(img, tri.position1.x + 50, tri.position1.y + 250, tri.position3.x + 50, tri.position3.y + 250, 0xFFFFFF);
+        drawLine(img, tri.position2.x + 50, tri.position2.y + 250, tri.position3.x + 50, tri.position3.y + 250, 0xFFFFFF);
+    }
+
+    for (LDrawQuad quad : test.buildQuads()) {
+        drawLine(img, quad.position1.x + 50, quad.position1.y + 250, quad.position2.x + 50, quad.position2.y + 250, 0xFFFFFF);
+        drawLine(img, quad.position2.x + 50, quad.position2.y + 250, quad.position3.x + 50, quad.position3.y + 250, 0xFFFFFF);
+        drawLine(img, quad.position3.x + 50, quad.position3.y + 250, quad.position4.x + 50, quad.position4.y + 250, 0xFFFFFF);
+        drawLine(img, quad.position4.x + 50, quad.position4.y + 250, quad.position1.x + 50, quad.position1.y + 250, 0xFFFFFF);
     }
 
     if (img.saveBMP("output.bmp")) {

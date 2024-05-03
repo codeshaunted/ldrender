@@ -36,8 +36,8 @@ class TransformMatrix {
         TransformMatrix();
         TransformMatrix(float x, float y, float z, float a, float b, float c, float d, float e, float f, float g, float h, float i);
         float* operator[](int i);
-        TransformMatrix operator*(TransformMatrix& other);
-        Vector3 operator*(Vector3& other);
+        TransformMatrix operator*(TransformMatrix& other); // matrix multiply resulting in another TransformMatrix
+        Vector3 operator*(Vector3& other); // matrix multiply resulting in another Vector3 (neglecting last row)
     private:
         float data[4][4];
 };
@@ -57,11 +57,18 @@ struct LDrawLine {
 };
 
 struct LDrawTri {
-
+    int color;
+    Vector3 position1;
+    Vector3 position2;
+    Vector3 position3;
 };
 
 struct LDrawQuad {
-
+    int color;
+    Vector3 position1;
+    Vector3 position2;
+    Vector3 position3;
+    Vector3 position4;
 };
 
 struct LDrawOptLine {
@@ -76,6 +83,8 @@ class LDraw {
         void loadFromData(std::string model_data, std::unordered_map<std::string, LDraw*>* loaded_models);
         void loadFromFile(std::string file_path, std::unordered_map<std::string, LDraw*>* loaded_models = nullptr);
         std::vector<LDrawLine> buildLines();
+        std::vector<LDrawTri> buildTris();
+        std::vector<LDrawQuad> buildQuads();
     private:
         bool was_loaded = false;
         bool is_root_model = false;

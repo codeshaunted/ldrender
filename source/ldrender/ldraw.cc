@@ -194,8 +194,59 @@ void LDraw::loadFromData(std::string model_data, std::unordered_map<std::string,
                     break;
                 }
             }
-            case '3':
-            case '4':
+            case '3': {
+                if (tokens.size() == 11) {
+                    LDrawTri tri(
+                        std::stoi(tokens[1]), // color
+                        Vector3(
+                            std::stof(tokens[2]), // x1
+                            std::stof(tokens[3]), // y1
+                            std::stof(tokens[4]) // z1
+                        ),
+                        Vector3(
+                            std::stof(tokens[5]), // x2
+                            std::stof(tokens[6]), // y2
+                            std::stof(tokens[7]) // z2
+                        ),
+                        Vector3(
+                            std::stof(tokens[8]), // x3
+                            std::stof(tokens[9]), // y3
+                            std::stof(tokens[10]) // z3
+                        )
+                    );
+                    this->tris.push_back(tri);
+                    break;
+                }
+            }
+            case '4': {
+                if (tokens.size() == 14) {
+                    LDrawQuad quad(
+                        std::stoi(tokens[1]), // color
+                        Vector3(
+                            std::stof(tokens[2]), // x1
+                            std::stof(tokens[3]), // y1
+                            std::stof(tokens[4]) // z1
+                        ),
+                        Vector3(
+                            std::stof(tokens[5]), // x2
+                            std::stof(tokens[6]), // y2
+                            std::stof(tokens[7]) // z2
+                        ),
+                        Vector3(
+                            std::stof(tokens[8]), // x3
+                            std::stof(tokens[9]), // y3
+                            std::stof(tokens[10]) // z3
+                        ),
+                        Vector3(
+                            std::stof(tokens[11]), // x4
+                            std::stof(tokens[12]), // y4
+                            std::stof(tokens[13]) // z4
+                        )
+                    );
+                    this->quads.push_back(quad);
+                    break;
+                }
+            }
             default:
                 break;
         }
@@ -253,6 +304,49 @@ std::vector<LDrawLine> LDraw::buildLines() {
     }
 
     return output_lines;
+}
+
+std::vector<LDrawTri> LDraw::buildTris() {
+    std::vector<LDrawTri> output_tris;
+    for (LDrawTri tri : this->tris) {
+        output_tris.push_back(tri);
+    }
+
+    for (LDrawSubFile subfile : subfiles) {
+        std::vector<LDrawTri> subfile_tris = subfile.model->buildTris();
+        for (LDrawTri subfile_tri : subfile_tris) {
+            // TODO: ADD SOME SHIT ABOUT COLOR HERE
+            subfile_tri.position1 = subfile.transform * subfile_tri.position1;
+            subfile_tri.position2 = subfile.transform * subfile_tri.position2;
+            subfile_tri.position3 = subfile.transform * subfile_tri.position3;
+
+            output_tris.push_back(subfile_tri);
+        }
+    }
+
+    return output_tris;
+}
+
+std::vector<LDrawQuad> LDraw::buildQuads() {
+    std::vector<LDrawQuad> output_quads;
+    for (LDrawQuad quad : this->quads) {
+        output_quads.push_back(quad);
+    }
+
+    for (LDrawSubFile subfile : subfiles) {
+        std::vector<LDrawQuad> subfile_quads = subfile.model->buildQuads();
+        for (LDrawQuad subfile_quad : subfile_quads) {
+            // TODO: ADD SOME SHIT ABOUT COLOR HERE
+            subfile_quad.position1 = subfile.transform * subfile_quad.position1;
+            subfile_quad.position2 = subfile.transform * subfile_quad.position2;
+            subfile_quad.position3 = subfile.transform * subfile_quad.position3;
+            subfile_quad.position4 = subfile.transform * subfile_quad.position4;
+
+            output_quads.push_back(subfile_quad);
+        }
+    }
+
+    return output_quads;
 }
 
 } // namespace ldrender
