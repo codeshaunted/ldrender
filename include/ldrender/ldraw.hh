@@ -75,25 +75,36 @@ struct LDrawOptLine {
 
 };
 
+struct LDrawColor {
+    std::string name;
+    uint32_t value;
+    uint32_t edge;
+    // TODO: add support for more color bullshit?
+};
+
 class LDraw {
     public:
-        LDraw();
+        LDraw(std::string library_path);
         ~LDraw();
         bool wasLoaded();
-        void loadFromData(std::string model_data, std::unordered_map<std::string, LDraw*>* loaded_models);
-        void loadFromFile(std::string file_path, std::unordered_map<std::string, LDraw*>* loaded_models = nullptr);
+        void loadFromData(std::string model_data);
+        void loadFromFile(std::string file_path);
         std::vector<LDrawLine> buildLines();
         std::vector<LDrawTri> buildTris();
         std::vector<LDrawQuad> buildQuads();
     private:
+        std::string library_path;
         bool was_loaded = false;
         bool is_root_model = false;
-        std::unordered_map<std::string, LDraw*>* loaded_models;
+        static std::unordered_map<std::string, LDraw*> loaded_models;
+        static std::unordered_map<int, LDrawColor*> color_map;
         std::vector<LDrawSubFile> subfiles;
         std::vector<LDrawLine> lines;
         std::vector<LDrawTri> tris;
         std::vector<LDrawQuad> quads;
         std::vector<LDrawOptLine> optlines;
+        LDraw();
+        void loadLDConfig();
 };
 
 } // namespace ldrender

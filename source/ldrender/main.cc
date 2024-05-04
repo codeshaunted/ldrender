@@ -124,7 +124,7 @@ void drawLine(Image &img, int x0, int y0, int x1, int y1, uint32_t color) {
 int main() {
     Image img(800, 600);
 
-    LDraw test;
+    LDraw test("ldraw");
     test.loadFromFile("model.ldr");
 
     for (LDrawLine line : test.buildLines()) {

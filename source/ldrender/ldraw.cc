@@ -86,17 +86,18 @@ Vector3 TransformMatrix::operator*(Vector3& other) {
     return result;
 }
 
-LDraw::LDraw() {
+LDraw::LDraw(std::string library_path) {
+    this->is_root_model = true;
+    this->library_path = library_path;
 
+    this->loadLDConfig();
 }
 
 LDraw::~LDraw() {
     if (this->is_root_model) {
-        for (auto model : *this->loaded_models) {
+        for (auto& model : LDraw::loaded_models) {
             delete model.second;
         }
-
-        delete this->loaded_models;
     }
 }
 
@@ -104,9 +105,8 @@ bool LDraw::wasLoaded() {
     return this->was_loaded;
 }
 
-void LDraw::loadFromData(std::string model_data, std::unordered_map<std::string, LDraw*>* loaded_models) {
+void LDraw::loadFromData(std::string model_data) {
     this->was_loaded = true;
-    this->loaded_models = loaded_models;
 
     std::stringstream model_data_stream;
     model_data_stream << model_data;
@@ -129,15 +129,15 @@ void LDraw::loadFromData(std::string model_data, std::unordered_map<std::string,
                         }
                         std::string file_name = Utilities::toLowercaseString(Utilities::trimString(line_data.substr(line_data.find("FILE") + 4)));
                         LDraw* file = nullptr;
-                        if (!this->loaded_models->contains(file_name)) {
+                        if (!LDraw::loaded_models.contains(file_name)) {
                             file = new LDraw();
-                            this->loaded_models->insert({file_name, file});
+                            LDraw::loaded_models.insert({file_name, file});
                         } else {
-                            file = this->loaded_models->at(file_name);
+                            file = LDraw::loaded_models.at(file_name);
                         }
                         std::stringstream temp_stream;
                         temp_stream << model_data_stream.rdbuf();
-                        file->loadFromData(temp_stream.str(), loaded_models);
+                        file->loadFromData(temp_stream.str());
                         file_directive = true;
                     }
                 }
@@ -147,11 +147,11 @@ void LDraw::loadFromData(std::string model_data, std::unordered_map<std::string,
                 if (tokens.size() > 14) {
                     std::string subfile_name = Utilities::toLowercaseString(Utilities::trimString(Utilities::splitStringByWhitespace(line_data, 15).back()));
                     LDraw* subfile_model = nullptr;
-                    if (this->loaded_models->contains(subfile_name)) {
-                        subfile_model = this->loaded_models->at(subfile_name);
+                    if (LDraw::loaded_models.contains(subfile_name)) {
+                        subfile_model = LDraw::loaded_models.at(subfile_name);
                     } else {
                         subfile_model = new LDraw();
-                        this->loaded_models->insert({subfile_name, subfile_model});
+                        LDraw::loaded_models.insert({subfile_name, subfile_model});
                     }
                     LDrawSubFile subfile(
                         std::stoi(tokens[1]), // color
@@ -257,31 +257,34 @@ void LDraw::loadFromData(std::string model_data, std::unordered_map<std::string,
     }
 }
 
-void LDraw::loadFromFile(std::string file_path, std::unordered_map<std::string, LDraw*>* loaded_models) {  
+void LDraw::loadFromFile(std::string file_path) {  
     this->was_loaded = true;
-    this->is_root_model = loaded_models == nullptr;
 
     if (this->is_root_model) {
-        this->loaded_models = new std::unordered_map<std::string, LDraw*>();
-        this->loaded_models->insert({Utilities::toLowercaseString(file_path), this});
-    } else {
-        this->loaded_models = loaded_models;
+        LDraw::loaded_models.insert({Utilities::toLowercaseString(file_path), this});
     }
 
-    if (file_path.ends_with(".dat")) {
-        file_path = "parts/" + file_path;
-    }
     std::ifstream file(file_path);
+    if (!file) {
+        file = std::ifstream(this->library_path + "/parts/" + file_path);
+    }
+    if (!file) {
+        file = std::ifstream(this->library_path + "/p/" + file_path);
+    }
+    if (!file) {
+        return; // unable to find file, TODO: do something here?
+    }
+
     std::stringstream model_data;
     
     model_data << file.rdbuf();
     file.close();
 
-    this->loadFromData(model_data.str(), this->loaded_models);
+    this->loadFromData(model_data.str());
 
-    for (auto model : *this->loaded_models) {
+    for (auto& model : LDraw::loaded_models) {
         if (!model.second->wasLoaded()) {
-            model.second->loadFromFile(model.first, this->loaded_models);
+            model.second->loadFromFile(model.first);
         }
     }
 }
@@ -347,6 +350,52 @@ std::vector<LDrawQuad> LDraw::buildQuads() {
     }
 
     return output_quads;
+}
+
+std::unordered_map<std::string, LDraw*> LDraw::loaded_models;
+
+std::unordered_map<int, LDrawColor*> LDraw::color_map;
+
+LDraw::LDraw() {
+
+}
+
+void LDraw::loadLDConfig() {
+    std::ifstream config_file(this->library_path + "/LDConfig.ldr");
+    std::stringstream config_data;
+    
+    config_data << config_file.rdbuf();
+    config_file.close();
+
+    std::string config_line;
+    while (std::getline(config_data, config_line)) {
+        std::vector<std::string> tokens = Utilities::splitStringByWhitespace(config_line);
+
+        if (tokens.size() > 3) {
+            if (tokens[0][0] == '0' && tokens[1] == "!COLOUR") {
+                LDrawColor* new_color = new LDrawColor();
+                new_color->name = tokens[2];
+                int code = 0;
+
+                for (size_t i = 3; i < tokens.size(); ++i) {
+                    if (!(i + 1 < tokens.size())) {
+                        break;
+                    }
+                    if (tokens[i] == "CODE") {
+                        code = std::stoi(tokens[i + 1]);
+                    }
+                    if (tokens[i] == "VALUE") {
+                        new_color->value = std::stoul(tokens[i + 1].substr(1), nullptr, 16);
+                    }
+                    if (tokens[i] == "EDGE") {
+                        new_color->edge = std::stoul(tokens[i + 1].substr(1), nullptr, 16);
+                    }
+                }
+
+                this->color_map.insert({code, new_color});
+            }
+        }
+    }
 }
 
 } // namespace ldrender
