@@ -88,7 +88,7 @@ Vector3 TransformMatrix::operator*(Vector3& other) {
 
 LDraw::LDraw(std::string library_path) {
     this->is_root_model = true;
-    this->library_path = library_path;
+    LDraw::library_path = library_path;
 
     this->loadLDConfig();
 }
@@ -145,6 +145,11 @@ void LDraw::loadFromData(std::string model_data) {
             }    
             case '1': {
                 if (tokens.size() > 14) {
+                    LDrawColor* color = nullptr;
+                    int color_code = stoi(tokens[1]);
+                    if (LDraw::color_map.contains(color_code)) {
+                        color = LDraw::color_map.at(color_code);
+                    }
                     std::string subfile_name = Utilities::toLowercaseString(Utilities::trimString(Utilities::splitStringByWhitespace(line_data, 15).back()));
                     LDraw* subfile_model = nullptr;
                     if (LDraw::loaded_models.contains(subfile_name)) {
@@ -154,7 +159,7 @@ void LDraw::loadFromData(std::string model_data) {
                         LDraw::loaded_models.insert({subfile_name, subfile_model});
                     }
                     LDrawSubFile subfile(
-                        std::stoi(tokens[1]), // color
+                        color, // color
                         TransformMatrix(
                             std::stof(tokens[2]), // x
                             std::stof(tokens[3]), // y
@@ -177,8 +182,13 @@ void LDraw::loadFromData(std::string model_data) {
             }
             case '2': {
                 if (tokens.size() == 8) {
+                    LDrawColor* color = nullptr;
+                    int color_code = stoi(tokens[1]);
+                    if (LDraw::color_map.contains(color_code)) {
+                        color = LDraw::color_map.at(color_code);
+                    }
                     LDrawLine line(
-                        std::stoi(tokens[1]), // color
+                        color, // color
                         Vector3(
                             std::stof(tokens[2]), // x1
                             std::stof(tokens[3]), // y1
@@ -196,8 +206,13 @@ void LDraw::loadFromData(std::string model_data) {
             }
             case '3': {
                 if (tokens.size() == 11) {
+                    LDrawColor* color = nullptr;
+                    int color_code = stoi(tokens[1]);
+                    if (LDraw::color_map.contains(color_code)) {
+                        color = LDraw::color_map.at(color_code);
+                    }
                     LDrawTri tri(
-                        std::stoi(tokens[1]), // color
+                        color, // color
                         Vector3(
                             std::stof(tokens[2]), // x1
                             std::stof(tokens[3]), // y1
@@ -220,8 +235,13 @@ void LDraw::loadFromData(std::string model_data) {
             }
             case '4': {
                 if (tokens.size() == 14) {
+                    LDrawColor* color = nullptr;
+                    int color_code = stoi(tokens[1]);
+                    if (LDraw::color_map.contains(color_code)) {
+                        color = LDraw::color_map.at(color_code);
+                    }
                     LDrawQuad quad(
-                        std::stoi(tokens[1]), // color
+                        color, // color
                         Vector3(
                             std::stof(tokens[2]), // x1
                             std::stof(tokens[3]), // y1
@@ -265,13 +285,13 @@ void LDraw::loadFromFile(std::string file_path) {
     }
 
     std::ifstream file(file_path);
-    if (!file) {
-        file = std::ifstream(this->library_path + "/parts/" + file_path);
+    if (!file.good()) {
+        file = std::ifstream(LDraw::library_path + "/parts/" + file_path);
     }
-    if (!file) {
-        file = std::ifstream(this->library_path + "/p/" + file_path);
+    if (!file.good()) {
+        file = std::ifstream(LDraw::library_path + "/p/" + file_path);
     }
-    if (!file) {
+    if (!file.good()) {
         return; // unable to find file, TODO: do something here?
     }
 
@@ -298,7 +318,9 @@ std::vector<LDrawLine> LDraw::buildLines() {
     for (LDrawSubFile subfile : subfiles) {
         std::vector<LDrawLine> subfile_lines = subfile.model->buildLines();
         for (LDrawLine subfile_line : subfile_lines) {
-            // TODO: ADD SOME SHIT ABOUT COLOR HERE
+            if (subfile_line.color->name == "Edge_Colour") { // IN THEORY someone could use Main_Colour here but fuck that
+                subfile_line.color = subfile.color;
+            }
             subfile_line.position1 = subfile.transform * subfile_line.position1;
             subfile_line.position2 = subfile.transform * subfile_line.position2;
 
@@ -318,7 +340,9 @@ std::vector<LDrawTri> LDraw::buildTris() {
     for (LDrawSubFile subfile : subfiles) {
         std::vector<LDrawTri> subfile_tris = subfile.model->buildTris();
         for (LDrawTri subfile_tri : subfile_tris) {
-            // TODO: ADD SOME SHIT ABOUT COLOR HERE
+            if (subfile_tri.color->name == "Main_Colour") { // TODO: do edge colors
+                subfile_tri.color = subfile.color;
+            }
             subfile_tri.position1 = subfile.transform * subfile_tri.position1;
             subfile_tri.position2 = subfile.transform * subfile_tri.position2;
             subfile_tri.position3 = subfile.transform * subfile_tri.position3;
@@ -339,7 +363,9 @@ std::vector<LDrawQuad> LDraw::buildQuads() {
     for (LDrawSubFile subfile : subfiles) {
         std::vector<LDrawQuad> subfile_quads = subfile.model->buildQuads();
         for (LDrawQuad subfile_quad : subfile_quads) {
-            // TODO: ADD SOME SHIT ABOUT COLOR HERE
+            if (subfile_quad.color->name == "Main_Colour") { // TODO: do edge colors
+                subfile_quad.color = subfile.color;
+            }
             subfile_quad.position1 = subfile.transform * subfile_quad.position1;
             subfile_quad.position2 = subfile.transform * subfile_quad.position2;
             subfile_quad.position3 = subfile.transform * subfile_quad.position3;
@@ -352,6 +378,8 @@ std::vector<LDrawQuad> LDraw::buildQuads() {
     return output_quads;
 }
 
+std::string LDraw::library_path;
+
 std::unordered_map<std::string, LDraw*> LDraw::loaded_models;
 
 std::unordered_map<int, LDrawColor*> LDraw::color_map;
@@ -361,7 +389,7 @@ LDraw::LDraw() {
 }
 
 void LDraw::loadLDConfig() {
-    std::ifstream config_file(this->library_path + "/LDConfig.ldr");
+    std::ifstream config_file(LDraw::library_path + "/LDConfig.ldr");
     std::stringstream config_data;
     
     config_data << config_file.rdbuf();
@@ -385,7 +413,7 @@ void LDraw::loadLDConfig() {
                         code = std::stoi(tokens[i + 1]);
                     }
                     if (tokens[i] == "VALUE") {
-                        new_color->value = std::stoul(tokens[i + 1].substr(1), nullptr, 16);
+                        new_color->main = std::stoul(tokens[i + 1].substr(1), nullptr, 16);
                     }
                     if (tokens[i] == "EDGE") {
                         new_color->edge = std::stoul(tokens[i + 1].substr(1), nullptr, 16);

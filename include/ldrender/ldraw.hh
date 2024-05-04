@@ -44,27 +44,34 @@ class TransformMatrix {
 
 class LDraw;
 
+struct LDrawColor {
+    std::string name;
+    uint32_t main;
+    uint32_t edge;
+    // TODO: add support for more color bullshit?
+};
+
 struct LDrawSubFile {
-    int color;
+    LDrawColor* color;
     TransformMatrix transform;
     LDraw* model;
 };
 
 struct LDrawLine {
-    int color;
+    LDrawColor* color;
     Vector3 position1;
     Vector3 position2;
 };
 
 struct LDrawTri {
-    int color;
+    LDrawColor* color;
     Vector3 position1;
     Vector3 position2;
     Vector3 position3;
 };
 
 struct LDrawQuad {
-    int color;
+    LDrawColor* color;
     Vector3 position1;
     Vector3 position2;
     Vector3 position3;
@@ -73,13 +80,6 @@ struct LDrawQuad {
 
 struct LDrawOptLine {
 
-};
-
-struct LDrawColor {
-    std::string name;
-    uint32_t value;
-    uint32_t edge;
-    // TODO: add support for more color bullshit?
 };
 
 class LDraw {
@@ -93,9 +93,9 @@ class LDraw {
         std::vector<LDrawTri> buildTris();
         std::vector<LDrawQuad> buildQuads();
     private:
-        std::string library_path;
         bool was_loaded = false;
         bool is_root_model = false;
+        static std::string library_path;
         static std::unordered_map<std::string, LDraw*> loaded_models;
         static std::unordered_map<int, LDrawColor*> color_map;
         std::vector<LDrawSubFile> subfiles;
